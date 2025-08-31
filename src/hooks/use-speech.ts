@@ -110,10 +110,15 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = (e) => {
       console.error('Speech synthesis error', e);
+      toast({
+        title: 'Speech Error',
+        description: 'Could not play the audio. Please try again.',
+        variant: 'destructive',
+      });
       setIsSpeaking(false);
     }
     window.speechSynthesis.speak(utterance);
-  }, [isSupported]);
+  }, [isSupported, toast]);
   
   const cancelSpeaking = useCallback(() => {
     if (!isSupported) return;
