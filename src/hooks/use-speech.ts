@@ -44,7 +44,6 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      audioRef.current.src = "";
     }
     setIsSpeaking(false);
   }, []);
@@ -118,7 +117,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       cancelSpeaking();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onTranscript, toast]);
+  }, [onTranscript, toast, cancelSpeaking]);
 
   const toggleListening = useCallback(() => {
     if (!recognitionRef.current) {
