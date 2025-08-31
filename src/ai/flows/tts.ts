@@ -42,9 +42,7 @@ export const textToSpeech = ai.defineFlow(
   {
     name: 'textToSpeech',
     inputSchema: z.string(),
-    outputSchema: z.object({
-      media: z.string(),
-    }),
+    outputSchema: z.string(),
   },
   async (query) => {
     const { media } = await ai.generate({
@@ -69,8 +67,6 @@ export const textToSpeech = ai.defineFlow(
       'base64'
     );
     
-    return {
-      media: 'data:audio/wav;base64,' + (await toWav(audioBuffer)),
-    };
+    return 'data:audio/wav;base64,' + (await toWav(audioBuffer));
   }
 );

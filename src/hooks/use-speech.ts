@@ -39,16 +39,12 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const audioSrcRef = useRef<string | null>(null);
 
   const cancelSpeaking = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
-      if (audioSrcRef.current) {
-        URL.revokeObjectURL(audioSrcRef.current);
-        audioSrcRef.current = null;
-      }
+      audioRef.current.src = "";
     }
     setIsSpeaking(false);
   }, []);
@@ -116,9 +112,6 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     return () => {
       recognitionRef.current?.stop();
       cancelSpeaking();
-      if (audioRef.current) {
-        audioRef.current = null;
-      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onTranscript, toast]);
@@ -156,14 +149,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     try {
       const audioSrc = await getAudioResponse(text);
       if (audioSrc && audioRef.current) {
-        // Revoke the old object URL if it exists
-        if (audioSrcRef.current) {
-          URL.revokeObjectURL(audioSrcRef.current);
-        }
-
         audioRef.current.src = audioSrc;
-        audioSrcRef.current = audioSrc; // Store the new object URL
-        
         await audioRef.current.play();
       } else if (!audioSrc) {
         toast({
