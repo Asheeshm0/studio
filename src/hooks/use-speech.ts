@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useToast } from './use-toast';
 
 // Define the SpeechRecognition interface for TypeScript
 interface SpeechRecognition extends EventTarget {
@@ -33,6 +34,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
+  const { toast } = useToast();
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -62,6 +64,13 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
 
       recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
         console.error('Speech recognition error:', event.error);
+        if (event.error === 'network') {
+          toast({
+            title: 'Network Error',
+            description: 'Speech recognition service is unavailable. Please check your internet connection.',
+            variant: 'destructive',
+          });
+        }
         setIsListening(false);
       };
       
@@ -79,7 +88,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       recognitionRef.current?.stop();
       window.speechSynthesis.cancel();
     }
-  }, [onTranscript]);
+  }, [onTranscript, toast]);
 
   const toggleListening = useCallback(() => {
     if (!isSupported) return;
