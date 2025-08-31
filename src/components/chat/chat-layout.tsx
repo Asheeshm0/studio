@@ -12,7 +12,7 @@ export function ChatLayout() {
   const defaultLayout = [320, 1000];
 
   return (
-    <SidebarProvider defaultOpen>
+    <SidebarProvider>
       <div className="flex h-screen w-full">
         <ChatSidebar className="h-full w-full max-w-sm" />
         <SidebarInset className="max-h-screen">
