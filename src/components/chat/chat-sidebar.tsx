@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, MessageSquare } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 type ChatSidebarProps = {
   className?: string;
@@ -23,6 +24,12 @@ type ChatSidebarProps = {
 
 export function ChatSidebar({ className }: ChatSidebarProps) {
   const { chats, activeChatId, createNewChat, setActiveChatId } = useChat();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   return (
     <Sidebar className={cn("border-r", className)}>
@@ -40,7 +47,7 @@ export function ChatSidebar({ className }: ChatSidebarProps) {
       <SidebarContent>
         <ScrollArea className="h-full">
           <SidebarMenu>
-            {chats.map((chat) => (
+            {isClient && chats.map((chat) => (
               <SidebarMenuItem key={chat.id}>
                 <SidebarMenuButton
                   isActive={activeChatId === chat.id}
