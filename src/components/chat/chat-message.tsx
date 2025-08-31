@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Copy, Volume2, BrainCircuit, User } from "lucide-react";
+import { Copy, Volume2, BrainCircuit, User, Loader2, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { useSpeech } from "@/hooks/use-speech";
+import { getAudioResponse } from "@/app/actions";
 
 interface ChatMessageProps {
   message?: Message;
@@ -17,7 +17,9 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
   const { toast } = useToast();
-  const { speak, isSpeaking, cancelSpeaking } = useSpeech(() => {});
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
+  const [audioController, setAudioController] = useState<HTMLAudioElement | null>(null);
 
   const isAssistant = message?.role === "assistant" || isLoading;
 
@@ -30,11 +32,61 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
     }
   };
 
-  const handleSpeak = () => {
+  const cancelSpeaking = useCallback(() => {
+    if (audioController) {
+      audioController.pause();
+      audioController.currentTime = 0;
+      setAudioController(null);
+      setIsSpeaking(false);
+      setAudioLoading(false);
+    }
+  }, [audioController]);
+
+  const handleSpeak = async () => {
     if (isSpeaking) {
       cancelSpeaking();
-    } else if (message?.content) {
-      speak(message.content);
+      return;
+    }
+
+    if (!message?.content) return;
+
+    setAudioLoading(true);
+    try {
+      const audioSrc = await getAudioResponse(message.content);
+      if (audioSrc) {
+        const audio = new Audio(audioSrc);
+        setAudioController(audio);
+        audio.onplaying = () => setIsSpeaking(true);
+        audio.onended = () => {
+          setIsSpeaking(false);
+          setAudioController(null);
+        };
+        audio.onerror = () => {
+          toast({
+            title: "Audio Error",
+            description: "Could not play the audio.",
+            variant: "destructive",
+          });
+          setIsSpeaking(false);
+          setAudioController(null);
+        };
+        await audio.play();
+      } else {
+        toast({
+          title: "Speech Error",
+          description: "Could not generate audio for this message.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error playing audio:", error);
+      toast({
+        title: "Playback Error",
+        description: "Failed to play the audio.",
+        variant: "destructive",
+      });
+    } finally {
+      setAudioLoading(false);
     }
   };
 
@@ -46,7 +98,6 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
       return "just now";
     }
   }, [message]);
-  
 
   return (
     <div className={cn("flex items-start gap-3", !isAssistant && "justify-end")}>
@@ -84,9 +135,15 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                   <Copy className="w-3.5 h-3.5" />
                   <span className="sr-only">Copy message</span>
                 </Button>
-                <Button variant="ghost" size="icon" className="w-6 h-6" onClick={handleSpeak}>
-                  <Volume2 className={cn("w-3.5 h-3.5", isSpeaking && 'text-accent' )} />
-                  <span className="sr-only">Read message aloud</span>
+                <Button variant="ghost" size="icon" className="w-6 h-6" onClick={handleSpeak} disabled={audioLoading}>
+                  {audioLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : isSpeaking ? (
+                     <X className="w-4 h-4 text-accent" />
+                  ) : (
+                    <Volume2 className="w-3.5 h-3.5" />
+                  )}
+                  <span className="sr-only">{isSpeaking ? 'Stop speaking' : 'Read message aloud'}</span>
                 </Button>
               </>
             )}
