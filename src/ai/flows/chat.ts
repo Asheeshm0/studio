@@ -41,6 +41,6 @@ Your response:`;
       },
     });
 
-    return { response: llmResponse.text() };
+    return { response: llmResponse.text };
   }
 );
