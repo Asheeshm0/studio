@@ -39,7 +39,19 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioSrcRef = useRef<string | null>(null);
 
+  const cancelSpeaking = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      if (audioSrcRef.current) {
+        URL.revokeObjectURL(audioSrcRef.current);
+        audioSrcRef.current = null;
+      }
+    }
+    setIsSpeaking(false);
+  }, []);
 
   useEffect(() => {
     const recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -88,24 +100,27 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
 
     const audio = new Audio();
     audio.onplaying = () => setIsSpeaking(true);
-    audio.onended = () => setIsSpeaking(false);
+    audio.onended = () => {
+      cancelSpeaking();
+    };
     audio.onerror = () => {
        toast({
         title: 'Speech Error',
         description: 'Could not play the audio. Please try again.',
         variant: 'destructive',
       });
-      setIsSpeaking(false);
+      cancelSpeaking();
     }
     audioRef.current = audio;
 
     return () => {
       recognitionRef.current?.stop();
+      cancelSpeaking();
       if (audioRef.current) {
-        audioRef.current.pause();
         audioRef.current = null;
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onTranscript, toast]);
 
   const toggleListening = useCallback(() => {
@@ -129,14 +144,6 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     }
     setIsListening(prev => !prev);
   }, [isListening, toast]);
-
-  const cancelSpeaking = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-    }
-    setIsSpeaking(false);
-  }, []);
   
   const speak = useCallback(async (text: string) => {
     if (!text || !audioRef.current) return;
@@ -149,7 +156,14 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     try {
       const audioSrc = await getAudioResponse(text);
       if (audioSrc && audioRef.current) {
+        // Revoke the old object URL if it exists
+        if (audioSrcRef.current) {
+          URL.revokeObjectURL(audioSrcRef.current);
+        }
+
         audioRef.current.src = audioSrc;
+        audioSrcRef.current = audioSrc; // Store the new object URL
+        
         await audioRef.current.play();
       } else if (!audioSrc) {
         toast({
