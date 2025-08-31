@@ -37,6 +37,21 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
   const { toast } = useToast();
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  const warmupSpeech = useCallback(() => {
+    const synth = window.speechSynthesis;
+    if (synth.getVoices().length === 0) {
+      const warmupUtterance = new SpeechSynthesisUtterance('');
+      warmupUtterance.volume = 0;
+      synth.speak(warmupUtterance);
+    }
+  }, []);
+
+  const resetSpeech = useCallback(() => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+  }, []);
 
   useEffect(() => {
     const recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -78,6 +93,12 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       };
 
       recognitionRef.current = recognitionInstance;
+      
+      // Warm up speech synthesis engine
+      synthesis.getVoices();
+      synthesis.onvoiceschanged = warmupSpeech;
+      warmupSpeech();
+
     } else {
       setIsSupported(false);
       console.warn('Speech recognition or synthesis not supported in this browser.');
@@ -87,7 +108,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       recognitionRef.current?.stop();
       window.speechSynthesis.cancel();
     }
-  }, [onTranscript, toast]);
+  }, [onTranscript, toast, warmupSpeech]);
 
   const toggleListening = useCallback(() => {
     if (!isSupported) return;
@@ -95,18 +116,33 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     if (isListening) {
       recognitionRef.current?.stop();
     } else {
-      recognitionRef.current?.start();
+      try {
+        recognitionRef.current?.start();
+      } catch (error) {
+        console.error("Could not start recognition", error);
+        setIsListening(false);
+      }
     }
     setIsListening(prev => !prev);
   }, [isListening, isSupported]);
   
   const speak = useCallback((text: string) => {
     if (!isSupported || !text) return;
+    
+    if (window.speechSynthesis.speaking) {
+      resetSpeech();
+      setTimeout(() => speak(text), 100);
+      return;
+    }
 
-    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
+    utteranceRef.current = utterance;
+    
     utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      utteranceRef.current = null;
+    };
     utterance.onerror = (e) => {
       toast({
         title: 'Speech Error',
@@ -114,9 +150,10 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
         variant: 'destructive',
       });
       setIsSpeaking(false);
+      utteranceRef.current = null;
     }
     window.speechSynthesis.speak(utterance);
-  }, [isSupported, toast]);
+  }, [isSupported, toast, resetSpeech]);
   
   const cancelSpeaking = useCallback(() => {
     if (!isSupported) return;
