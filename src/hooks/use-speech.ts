@@ -129,31 +129,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     }
     setIsListening(prev => !prev);
   }, [isListening, toast]);
-  
-  const speak = useCallback(async (text: string) => {
-    if (!text || !audioRef.current) return;
-    
-    if (isSpeaking) {
-      cancelSpeaking();
-      return;
-    }
 
-    setIsSpeaking(true);
-    const audioSrc = await getAudioResponse(text);
-    setIsSpeaking(false);
-
-    if (audioSrc && audioRef.current) {
-      audioRef.current.src = audioSrc;
-      audioRef.current.play();
-    } else if (!audioSrc) {
-       toast({
-        title: 'Speech Error',
-        description: 'Could not generate audio for this message.',
-        variant: 'destructive',
-      });
-    }
-  }, [isSpeaking, toast]);
-  
   const cancelSpeaking = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
@@ -161,6 +137,38 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     }
     setIsSpeaking(false);
   }, []);
+  
+  const speak = useCallback(async (text: string) => {
+    if (!text || !audioRef.current) return;
+
+    if (isSpeaking) {
+      cancelSpeaking();
+    }
+
+    setIsSpeaking(true);
+    try {
+      const audioSrc = await getAudioResponse(text);
+      if (audioSrc && audioRef.current) {
+        audioRef.current.src = audioSrc;
+        await audioRef.current.play();
+      } else if (!audioSrc) {
+        toast({
+          title: 'Speech Error',
+          description: 'Could not generate audio for this message.',
+          variant: 'destructive',
+        });
+        setIsSpeaking(false);
+      }
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      toast({
+        title: 'Playback Error',
+        description: 'Failed to play the audio.',
+        variant: 'destructive',
+      });
+      setIsSpeaking(false);
+    }
+  }, [isSpeaking, toast, cancelSpeaking]);
 
   return { isListening, isSpeaking, isSupported, toggleListening, speak, cancelSpeaking };
 };
