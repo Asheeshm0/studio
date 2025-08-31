@@ -30,11 +30,11 @@ import {
 export function SettingsDialog() {
   const { setTheme, theme } = useTheme()
   const { clearChat, exportChat } = useChat()
-  const [, setMessages] = useLocalStorage("athena-ai-chat", [])
+  const [, setChats] = useLocalStorage("athena-ai-chats", [])
   const [, setThemeStorage] = useLocalStorage("theme", "system")
 
   const handleClearAll = () => {
-    setMessages([])
+    setChats([])
     setThemeStorage("system")
     window.location.reload()
   }
@@ -83,7 +83,7 @@ export function SettingsDialog() {
                   <AlertDialogTrigger asChild>
                     <Button variant="outline" className="w-full justify-start gap-2">
                       <Trash2 className="h-4 w-4" />
-                      <span>Clear Chat History</span>
+                      <span>Clear Current Chat</span>
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
@@ -116,7 +116,7 @@ export function SettingsDialog() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        This will permanently delete all your data, including chat history and preferences, and reset the app. This action cannot be undone.
+                        This will permanently delete all your data, including all chat history and preferences, and reset the app. This action cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

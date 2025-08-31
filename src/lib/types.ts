@@ -4,3 +4,10 @@ export type Message = {
   content: string;
   timestamp: number;
 };
+
+export type Chat = {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: number;
+};

@@ -1,28 +1,58 @@
 "use client";
 
 import { createContext, useState, useCallback, useEffect, ReactNode } from "react";
-import type { Message } from "@/lib/types";
+import type { Message, Chat } from "@/lib/types";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { getAiResponse } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
+import { nanoid } from "nanoid";
 
 export interface ChatContextType {
+  chats: Chat[];
+  activeChatId: string | null;
   messages: Message[];
   isLoading: boolean;
   sendMessage: (content: string) => Promise<void>;
   clearChat: () => void;
   exportChat: () => void;
+  setActiveChatId: (id: string | null) => void;
+  createNewChat: () => void;
 }
 
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const [messages, setMessages] = useLocalStorage<Message[]>("athena-ai-chat", []);
+  const [chats, setChats] = useLocalStorage<Chat[]>("athena-ai-chats", []);
+  const [activeChatId, setActiveChatId] = useLocalStorage<string | null>("athena-ai-active-chat-id", null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  const messages = chats.find(chat => chat.id === activeChatId)?.messages ?? [];
+
+  const createNewChat = useCallback(() => {
+    const newChatId = nanoid();
+    const newChat: Chat = {
+      id: newChatId,
+      title: "New Chat",
+      messages: [],
+      createdAt: Date.now(),
+    };
+    setChats(prev => [newChat, ...prev]);
+    setActiveChatId(newChatId);
+  }, [setChats, setActiveChatId]);
   
+  // Create a default chat if none exists
+  useEffect(() => {
+    if (chats.length === 0) {
+      createNewChat();
+    } else if (!activeChatId || !chats.find(c => c.id === activeChatId)) {
+      setActiveChatId(chats[0]?.id || null);
+    }
+  }, [chats, activeChatId, createNewChat, setActiveChatId]);
+
+
   const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim()) return;
+    if (!content.trim() || !activeChatId) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -31,12 +61,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       timestamp: Date.now(),
     };
 
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    const updatedMessages = [...messages, userMessage];
+    
+    setChats(prev => prev.map(chat => 
+      chat.id === activeChatId ? { ...chat, messages: updatedMessages } : chat
+    ));
+
     setIsLoading(true);
 
     try {
-      const aiResponseContent = await getAiResponse(newMessages, content);
+      const aiResponseContent = await getAiResponse(updatedMessages, content);
       
       const aiMessage: Message = {
         id: `assistant-${Date.now()}`,
@@ -44,7 +78,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         content: aiResponseContent,
         timestamp: Date.now(),
       };
-      setMessages([...newMessages, aiMessage]);
+      
+      setChats(prev => prev.map(chat => 
+        chat.id === activeChatId ? { ...chat, messages: [...updatedMessages, aiMessage] } : chat
+      ));
+
     } catch (error) {
       console.error("Failed to get AI response:", error);
       toast({
@@ -52,20 +90,24 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         description: "Failed to get a response from the assistant. Please check your connection and try again.",
         variant: "destructive",
       });
-      // Optionally remove the user message if the call fails
-      setMessages(messages);
+      setChats(prev => prev.map(chat => 
+        chat.id === activeChatId ? { ...chat, messages } : chat
+      ));
     } finally {
       setIsLoading(false);
     }
-  }, [messages, setMessages, toast]);
+  }, [activeChatId, messages, setChats, toast]);
 
   const clearChat = useCallback(() => {
-    setMessages([]);
+    if (!activeChatId) return;
+    setChats(prev => prev.map(chat =>
+      chat.id === activeChatId ? { ...chat, messages: [] } : chat
+    ));
     toast({
       title: "Chat Cleared",
-      description: "Your conversation history has been cleared.",
+      description: "This conversation's history has been cleared.",
     });
-  }, [setMessages, toast]);
+  }, [activeChatId, setChats, toast]);
 
   const exportChat = useCallback(() => {
     if (messages.length === 0) {
@@ -99,11 +141,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [messages, toast]);
 
   const value = {
+    chats,
+    activeChatId,
     messages,
     isLoading,
     sendMessage,
     clearChat,
     exportChat,
+    setActiveChatId,
+    createNewChat,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
