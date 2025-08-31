@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from './use-toast';
+import { getAudioResponse } from '@/app/actions';
 
 // Define the SpeechRecognition interface for TypeScript
 interface SpeechRecognition extends EventTarget {
@@ -37,27 +38,13 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
   const { toast } = useToast();
 
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const warmupSpeech = useCallback(() => {
-    const synth = window.speechSynthesis;
-    if (synth.getVoices().length === 0) {
-      const warmupUtterance = new SpeechSynthesisUtterance('');
-      warmupUtterance.volume = 0;
-      synth.speak(warmupUtterance);
-    }
-  }, []);
-
-  const resetSpeech = useCallback(() => {
-    window.speechSynthesis.cancel();
-    setIsSpeaking(false);
-  }, []);
 
   useEffect(() => {
     const recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const synthesis = window.speechSynthesis;
 
-    if (recognition && synthesis) {
+    if (recognition) {
       setIsSupported(true);
       const recognitionInstance = new recognition();
       recognitionInstance.continuous = true;
@@ -94,24 +81,41 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
 
       recognitionRef.current = recognitionInstance;
       
-      // Warm up speech synthesis engine
-      synthesis.getVoices();
-      synthesis.onvoiceschanged = warmupSpeech;
-      warmupSpeech();
-
     } else {
-      setIsSupported(false);
-      console.warn('Speech recognition or synthesis not supported in this browser.');
+      setIsSupported(true); // Still true for synthesis
+      console.warn('Speech recognition not supported in this browser.');
     }
+
+    const audio = new Audio();
+    audio.onplaying = () => setIsSpeaking(true);
+    audio.onended = () => setIsSpeaking(false);
+    audio.onerror = () => {
+       toast({
+        title: 'Speech Error',
+        description: 'Could not play the audio. Please try again.',
+        variant: 'destructive',
+      });
+      setIsSpeaking(false);
+    }
+    audioRef.current = audio;
 
     return () => {
       recognitionRef.current?.stop();
-      window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
     }
-  }, [onTranscript, toast, warmupSpeech]);
+  }, [onTranscript, toast]);
 
   const toggleListening = useCallback(() => {
-    if (!isSupported) return;
+    if (!recognitionRef.current) {
+       toast({
+        title: 'Unsupported',
+        description: 'Speech recognition is not supported in this browser.',
+      });
+      return
+    };
 
     if (isListening) {
       recognitionRef.current?.stop();
@@ -124,43 +128,39 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       }
     }
     setIsListening(prev => !prev);
-  }, [isListening, isSupported]);
+  }, [isListening, toast]);
   
-  const speak = useCallback((text: string) => {
-    if (!isSupported || !text) return;
+  const speak = useCallback(async (text: string) => {
+    if (!text || !audioRef.current) return;
     
-    if (window.speechSynthesis.speaking) {
-      resetSpeech();
-      setTimeout(() => speak(text), 100);
+    if (isSpeaking) {
+      cancelSpeaking();
       return;
     }
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utteranceRef.current = utterance;
-    
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => {
-      setIsSpeaking(false);
-      utteranceRef.current = null;
-    };
-    utterance.onerror = (e) => {
-      toast({
+    setIsSpeaking(true);
+    const audioSrc = await getAudioResponse(text);
+    setIsSpeaking(false);
+
+    if (audioSrc && audioRef.current) {
+      audioRef.current.src = audioSrc;
+      audioRef.current.play();
+    } else if (!audioSrc) {
+       toast({
         title: 'Speech Error',
-        description: 'Could not play the audio. Please try again.',
+        description: 'Could not generate audio for this message.',
         variant: 'destructive',
       });
-      setIsSpeaking(false);
-      utteranceRef.current = null;
     }
-    window.speechSynthesis.speak(utterance);
-  }, [isSupported, toast, resetSpeech]);
+  }, [isSpeaking, toast]);
   
   const cancelSpeaking = useCallback(() => {
-    if (!isSupported) return;
-    window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
     setIsSpeaking(false);
-  }, [isSupported]);
-
+  }, []);
 
   return { isListening, isSpeaking, isSupported, toggleListening, speak, cancelSpeaking };
 };
