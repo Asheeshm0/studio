@@ -63,7 +63,6 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       };
 
       recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
         if (event.error === 'network') {
           toast({
             title: 'Network Error',
@@ -109,7 +108,6 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = (e) => {
-      console.error('Speech synthesis error', e);
       toast({
         title: 'Speech Error',
         description: 'Could not play the audio. Please try again.',
