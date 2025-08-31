@@ -44,6 +44,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
     }
     setIsSpeaking(false);
   }, []);
@@ -98,12 +99,16 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     audio.onended = () => {
       cancelSpeaking();
     };
-    audio.onerror = () => {
-       toast({
-        title: 'Speech Error',
-        description: 'Could not play the audio. Please try again.',
-        variant: 'destructive',
-      });
+    audio.onerror = (e) => {
+      const error = (e.target as HTMLAudioElement)?.error;
+      // Dont show an error if the user cancels the audio
+      if (error?.code !== 20) {
+        toast({
+          title: 'Speech Error',
+          description: 'Could not play the audio. Please try again.',
+          variant: 'destructive',
+        });
+      }
       cancelSpeaking();
     }
     audioRef.current = audio;
@@ -113,7 +118,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       cancelSpeaking();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [onTranscript, toast, cancelSpeaking]);
+  }, [onTranscript, toast]);
 
   const toggleListening = useCallback(() => {
     if (!recognitionRef.current) {
@@ -139,18 +144,19 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
   
   const speak = useCallback(async (text: string) => {
     if (!text || !audioRef.current) return;
-
+  
     if (isSpeaking) {
       cancelSpeaking();
     }
-
+  
     setIsSpeaking(true);
     try {
       const audioSrc = await getAudioResponse(text);
+  
       if (audioSrc && audioRef.current) {
         audioRef.current.src = audioSrc;
         await audioRef.current.play();
-      } else if (!audioSrc) {
+      } else {
         toast({
           title: 'Speech Error',
           description: 'Could not generate audio for this message.',
