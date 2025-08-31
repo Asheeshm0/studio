@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types";
@@ -17,9 +17,9 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
   const { toast } = useToast();
+  const [audioController, setAudioController] = useState<HTMLAudioElement | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioLoading, setAudioLoading] = useState(false);
-  const [audioController, setAudioController] = useState<HTMLAudioElement | null>(null);
 
   const isAssistant = message?.role === "assistant" || isLoading;
 
@@ -42,6 +42,7 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
     }
   }, [audioController]);
 
+
   const handleSpeak = async () => {
     if (isSpeaking) {
       cancelSpeaking();
@@ -50,18 +51,25 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
 
     if (!message?.content) return;
 
+    // Immediately cancel any ongoing speech
+    if (audioController) {
+      cancelSpeaking();
+    }
+
     setAudioLoading(true);
+
     try {
       const audioSrc = await getAudioResponse(message.content);
+
       if (audioSrc) {
-        const audio = new Audio(audioSrc);
-        setAudioController(audio);
-        audio.onplaying = () => setIsSpeaking(true);
-        audio.onended = () => {
+        const newAudio = new Audio(audioSrc);
+        
+        newAudio.onplaying = () => setIsSpeaking(true);
+        newAudio.onended = () => {
           setIsSpeaking(false);
           setAudioController(null);
         };
-        audio.onerror = () => {
+        newAudio.onerror = () => {
           toast({
             title: "Audio Error",
             description: "Could not play the audio.",
@@ -70,7 +78,10 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
           setIsSpeaking(false);
           setAudioController(null);
         };
-        await audio.play();
+        
+        setAudioController(newAudio);
+        await newAudio.play();
+
       } else {
         toast({
           title: "Speech Error",
@@ -79,16 +90,24 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
         });
       }
     } catch (error) {
-      console.error("Error playing audio:", error);
+      console.error("Error in handleSpeak:", error);
       toast({
         title: "Playback Error",
-        description: "Failed to play the audio.",
+        description: "An unexpected error occurred.",
         variant: "destructive",
       });
     } finally {
       setAudioLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Cleanup function to cancel speaking when the component unmounts
+    return () => {
+      cancelSpeaking();
+    };
+  }, [cancelSpeaking]);
+
 
   const timeAgo = useMemo(() => {
     if (!message) return null;
