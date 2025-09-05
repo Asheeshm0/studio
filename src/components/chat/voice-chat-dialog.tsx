@@ -8,6 +8,7 @@ import { useSpeech } from '@/hooks/use-speech';
 import { getAiResponse, getAudioResponse } from '@/app/actions';
 import { useChat } from '@/hooks/use-chat';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 type VoiceChatDialogProps = {
   open: boolean;
@@ -20,6 +21,7 @@ export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
   const { messages } = useChat();
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [audioController, setAudioController] = useState<HTMLAudioElement | null>(null);
+  const { toast } = useToast();
 
   const handleTranscript = useCallback(async (text: string) => {
     if (!text) return;
@@ -36,14 +38,21 @@ export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
           setStatus('idle');
           setAudioController(null);
         };
+        newAudio.onerror = () => {
+          setStatus('idle');
+          setAudioController(null);
+          toast({ title: "Audio Error", description: "Could not play the audio.", variant: "destructive" });
+        }
       } else {
         setStatus('idle');
+        toast({ title: "Speech Error", description: "Could not generate audio for the response.", variant: "destructive" });
       }
     } catch (error) {
       console.error('Error in voice chat:', error);
       setStatus('idle');
+      toast({ title: "Error", description: "An unexpected error occurred during voice chat.", variant: "destructive" });
     }
-  }, [messages]);
+  }, [messages, toast]);
 
   const { isListening, isSupported, toggleListening } = useSpeech(handleTranscript, true);
 
@@ -56,20 +65,23 @@ export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
         toggleListening();
       }
     }
-  }, [open, audioController, isListening, toggleListening]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
   
   useEffect(() => {
-    if (isListening) {
+    if(isListening && status !== 'listening') {
       setStatus('listening');
-    } else if (status === 'listening') {
-       setStatus('idle');
+    } else if (!isListening && status === 'listening') {
+      setStatus('idle');
     }
   }, [isListening, status]);
 
   const handleMicClick = () => {
-    if (audioController) {
+    if (status === 'speaking' && audioController) {
       audioController.pause();
+      audioController.currentTime = 0;
       setAudioController(null);
+      setStatus('idle');
     }
     toggleListening();
   };
@@ -100,7 +112,7 @@ export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
               size="icon"
               className="absolute inset-4 w-32 h-32 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
               onClick={handleMicClick}
-              disabled={status === 'thinking' || status === 'speaking'}
+              disabled={status === 'thinking'}
             >
               {status === 'thinking' && <Loader2 className="w-12 h-12 animate-spin" />}
               {(status !== 'thinking') && <Mic className="w-12 h-12" />}
