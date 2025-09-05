@@ -18,23 +18,26 @@ async function toWav(
   sampleWidth = 2
 ): Promise<string> {
   return new Promise((resolve, reject) => {
-    const writer = new wav.Writer({
-      channels,
-      sampleRate: rate,
-      bitDepth: sampleWidth * 8,
-    });
+    try {
+      const writer = new wav.Writer({
+        channels,
+        sampleRate: rate,
+        bitDepth: sampleWidth * 8,
+      });
 
-    const bufs: any[] = [];
-    writer.on('error', reject);
-    writer.on('data', function (d) {
-      bufs.push(d);
-    });
-    writer.on('end', function () {
-      resolve(Buffer.concat(bufs).toString('base64'));
-    });
+      const bufs: any[] = [];
+      writer.on('error', reject);
+      writer.on('data', (chunk) => bufs.push(chunk));
+      writer.on('end', () => {
+        resolve(Buffer.concat(bufs).toString('base64'));
+      });
 
-    writer.write(pcmData);
-    writer.end();
+      writer.write(pcmData);
+      writer.end();
+    } catch (error) {
+        console.error("Error in toWav conversion:", error);
+        reject(error);
+    }
   });
 }
 
@@ -45,28 +48,34 @@ export const textToSpeech = ai.defineFlow(
     outputSchema: z.string(),
   },
   async (query) => {
-    const { media } = await ai.generate({
-      model: googleAI.model('gemini-2.5-flash-preview-tts-fast'),
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Algenib' },
+    try {
+      const { media } = await ai.generate({
+        model: googleAI.model('gemini-2.5-flash-preview-tts-fast'),
+        config: {
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: 'Algenib' },
+            },
           },
         },
-      },
-      prompt: query,
-    });
+        prompt: query,
+      });
 
-    if (!media?.url) {
-      throw new Error('No media returned from TTS model.');
+      if (!media?.url) {
+        throw new Error('No media returned from TTS model.');
+      }
+      
+      const audioBuffer = Buffer.from(
+        media.url.substring(media.url.indexOf(',') + 1),
+        'base64'
+      );
+      
+      const wavBase64 = await toWav(audioBuffer);
+      return 'data:audio/wav;base64,' + wavBase64;
+    } catch (error) {
+        console.error("Error in textToSpeech flow:", error);
+        throw new Error("Failed to generate audio.");
     }
-    
-    const audioBuffer = Buffer.from(
-      media.url.substring(media.url.indexOf(',') + 1),
-      'base64'
-    );
-    
-    return 'data:audio/wav;base64,' + (await toWav(audioBuffer));
   }
 );
