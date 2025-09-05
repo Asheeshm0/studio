@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Mic, CornerDownLeft, Loader2 } from "lucide-react";
+import { Send, Mic, CornerDownLeft, Loader2, Voicemail } from "lucide-react";
 import { useChat } from "@/hooks/use-chat";
 import { useSpeech } from "@/hooks/use-speech";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 
 export function ChatInput() {
   const [inputValue, setInputValue] = useState("");
-  const { sendMessage, isLoading } = useChat();
+  const { sendMessage, isLoading, isVoiceChatMode, setIsVoiceChatMode } = useChat();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const handleTranscript = useCallback((text: string) => {
@@ -50,6 +50,15 @@ export function ChatInput() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListening]);
+  
+  const handleMicClick = () => {
+    if (isListening) {
+      toggleListening();
+    } else {
+      setIsVoiceChatMode(true);
+      toggleListening();
+    }
+  }
 
   return (
     <div className="p-4 border-t bg-card">
@@ -60,16 +69,26 @@ export function ChatInput() {
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={isListening ? "Listening..." : "Ask Athena anything..."}
-          className="pr-24 min-h-[48px] resize-none"
+          className="pr-32 min-h-[48px] resize-none"
           rows={1}
           disabled={isLoading}
         />
         <div className="absolute top-1/2 right-3 -translate-y-1/2 flex gap-1">
           <TooltipProvider>
+             <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button type="button" size="icon" variant="ghost" onClick={() => setIsVoiceChatMode(prev => !prev)} disabled={isLoading}>
+                    <Voicemail className={cn("w-5 h-5", isVoiceChatMode ? "text-red-500" : "text-muted-foreground")} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Voice Chat Mode</p>
+                </TooltipContent>
+              </Tooltip>
             {isSupported && (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button type="button" size="icon" variant="ghost" onClick={toggleListening} disabled={isLoading}>
+                  <Button type="button" size="icon" variant="ghost" onClick={handleMicClick} disabled={isLoading}>
                     <Mic className={cn("w-5 h-5", isListening ? "text-red-500" : "text-muted-foreground")} />
                   </Button>
                 </TooltipTrigger>

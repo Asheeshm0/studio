@@ -3,7 +3,7 @@
 import { createContext, useState, useCallback, useEffect, ReactNode } from "react";
 import type { Message, Chat } from "@/lib/types";
 import useLocalStorage from "@/hooks/use-local-storage";
-import { getAiResponse } from "@/app/actions";
+import { getAiResponse, getAudioResponse } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { nanoid } from "nanoid";
 
@@ -17,6 +17,8 @@ export interface ChatContextType {
   exportChat: () => void;
   setActiveChatId: (id: string | null) => void;
   createNewChat: () => void;
+  isVoiceChatMode: boolean;
+  setIsVoiceChatMode: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -25,6 +27,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [chats, setChats] = useLocalStorage<Chat[]>("athena-ai-chats", []);
   const [activeChatId, setActiveChatId] = useLocalStorage<string | null>("athena-ai-active-chat-id", null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVoiceChatMode, setIsVoiceChatMode] = useState(false);
   const { toast } = useToast();
 
   const messages = chats.find(chat => chat.id === activeChatId)?.messages ?? [];
@@ -83,6 +86,20 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         chat.id === activeChatId ? { ...chat, messages: [...updatedMessages, aiMessage] } : chat
       ));
 
+      if (isVoiceChatMode) {
+        const audioSrc = await getAudioResponse(aiResponseContent);
+        if (audioSrc) {
+          const audio = new Audio(audioSrc);
+          audio.play();
+        } else {
+            toast({
+            title: "Audio Error",
+            description: "Could not generate audio for the response.",
+            variant: "destructive",
+          });
+        }
+      }
+
     } catch (error) {
       console.error("Failed to get AI response:", error);
       toast({
@@ -96,7 +113,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeChatId, messages, setChats, toast]);
+  }, [activeChatId, messages, setChats, toast, isVoiceChatMode]);
 
   const clearChat = useCallback(() => {
     if (!activeChatId) return;
@@ -150,6 +167,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     exportChat,
     setActiveChatId,
     createNewChat,
+    isVoiceChatMode,
+    setIsVoiceChatMode,
   };
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
