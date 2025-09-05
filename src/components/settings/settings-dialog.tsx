@@ -34,11 +34,10 @@ export function SettingsDialog() {
   const { setTheme, theme } = useTheme()
   const { clearChat, exportChat, voice, setVoice } = useChat()
   const [, setChats] = useLocalStorage("athena-ai-chats", [])
-  const [, setThemeStorage] = useLocalStorage("theme", "system")
 
   const handleClearAll = () => {
     setChats([])
-    setThemeStorage("system")
+    setTheme("system")
     window.location.reload()
   }
 
