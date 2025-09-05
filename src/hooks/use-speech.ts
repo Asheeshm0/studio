@@ -30,7 +30,7 @@ declare global {
   }
 }
 
-export const useSpeech = (onTranscript: (text: string) => void) => {
+export const useSpeech = (onTranscript: (text: string) => void, autoStop: boolean = false) => {
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const { toast } = useToast();
@@ -43,20 +43,24 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     if (SpeechRecognition) {
       setIsSupported(true);
       const recognitionInstance = new SpeechRecognition();
-      recognitionInstance.continuous = true;
+      recognitionInstance.continuous = !autoStop;
       recognitionInstance.interimResults = true;
       recognitionInstance.lang = 'en-US';
+      
+      let finalTranscript = '';
 
       recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTranscript = '';
-        for (let i = 0; i < event.results.length; i++) {
-          const transcript = event.results[i][0].transcript;
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
-            finalTranscript += transcript + ' ';
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
           }
         }
-        if (finalTranscript) {
-          onTranscript(finalTranscript.trim());
+        
+        if (finalTranscript || interimTranscript) {
+          onTranscript((finalTranscript || interimTranscript).trim());
         }
       };
 
@@ -72,6 +76,10 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
       };
       
       recognitionInstance.onend = () => {
+        if(autoStop && finalTranscript) {
+          onTranscript(finalTranscript.trim())
+          finalTranscript = ''
+        }
         setIsListening(false);
       };
 
@@ -85,7 +93,7 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
     return () => {
       recognitionRef.current?.stop();
     }
-  }, [onTranscript, toast]);
+  }, [onTranscript, toast, autoStop]);
 
   const toggleListening = useCallback(() => {
     if (!recognitionRef.current) {
@@ -98,15 +106,16 @@ export const useSpeech = (onTranscript: (text: string) => void) => {
 
     if (isListening) {
       recognitionRef.current?.stop();
+      setIsListening(false);
     } else {
       try {
         recognitionRef.current?.start();
+        setIsListening(true);
       } catch (error) {
         console.error("Could not start recognition", error);
         setIsListening(false);
       }
     }
-    setIsListening(prev => !prev);
   }, [isListening, toast]);
 
   return { isListening, isSupported, toggleListening };

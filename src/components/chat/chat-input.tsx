@@ -8,12 +8,14 @@ import { useChat } from "@/hooks/use-chat";
 import { useSpeech } from "@/hooks/use-speech";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { VoiceChatDialog } from "./voice-chat-dialog";
 
 
 export function ChatInput() {
   const [inputValue, setInputValue] = useState("");
-  const { sendMessage, isLoading, isVoiceChatMode, setIsVoiceChatMode } = useChat();
+  const { sendMessage, isLoading } = useChat();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [isVoiceChatOpen, setIsVoiceChatOpen] = useState(false);
   
   const handleTranscript = useCallback((text: string) => {
     setInputValue(text);
@@ -44,24 +46,20 @@ export function ChatInput() {
   }, [inputValue]);
   
   useEffect(() => {
-    if (isVoiceChatMode && !isListening && inputValue.trim()) {
+    if (!isListening && inputValue.trim()) {
         sendMessage(inputValue);
         setInputValue("");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isListening, isVoiceChatMode]);
+  }, [isListening]);
   
   const handleMicClick = () => {
-    if (isListening) {
       toggleListening();
-    } else {
-      setIsVoiceChatMode(true);
-      toggleListening();
-    }
   }
 
   return (
     <div className="p-4 border-t bg-card">
+      <VoiceChatDialog open={isVoiceChatOpen} onOpenChange={setIsVoiceChatOpen} />
       <form onSubmit={handleSubmit} className="relative">
         <Textarea
           ref={textareaRef}
@@ -77,12 +75,12 @@ export function ChatInput() {
           <TooltipProvider>
              <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button type="button" size="icon" variant="ghost" onClick={() => setIsVoiceChatMode(prev => !prev)} disabled={isLoading}>
-                    <Voicemail className={cn("w-5 h-5", isVoiceChatMode ? "text-red-500" : "text-muted-foreground")} />
+                  <Button type="button" size="icon" variant="ghost" onClick={() => setIsVoiceChatOpen(true)} disabled={isLoading}>
+                    <Voicemail className={cn("w-5 h-5", "text-muted-foreground")} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Voice Chat Mode</p>
+                  <p>Voice Chat</p>
                 </TooltipContent>
               </Tooltip>
             {isSupported && (
