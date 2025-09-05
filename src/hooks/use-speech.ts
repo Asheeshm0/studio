@@ -44,23 +44,19 @@ export const useSpeech = (onTranscript: (text: string) => void, autoStop: boolea
       setIsSupported(true);
       const recognitionInstance = new SpeechRecognition();
       recognitionInstance.continuous = !autoStop;
-      recognitionInstance.interimResults = true;
+      recognitionInstance.interimResults = false; // Only get final results
       recognitionInstance.lang = 'en-US';
       
-      let finalTranscript = '';
 
       recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = '';
+        let finalTranscript = '';
         for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
-          }
+           if (event.results[i].isFinal) {
+             finalTranscript += event.results[i][0].transcript;
+           }
         }
-        
-        if (finalTranscript || interimTranscript) {
-          onTranscript((finalTranscript || interimTranscript).trim());
+        if (finalTranscript) {
+          onTranscript(finalTranscript.trim());
         }
       };
 
@@ -76,10 +72,6 @@ export const useSpeech = (onTranscript: (text: string) => void, autoStop: boolea
       };
       
       recognitionInstance.onend = () => {
-        if(autoStop && finalTranscript) {
-          onTranscript(finalTranscript.trim())
-          finalTranscript = ''
-        }
         setIsListening(false);
       };
 
