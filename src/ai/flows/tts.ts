@@ -26,7 +26,10 @@ async function toWav(
       });
 
       const bufs: any[] = [];
-      writer.on('error', reject);
+      writer.on('error', (err) => {
+        console.error("WAV Writer Error:", err);
+        reject(err)
+      });
       writer.on('data', (chunk) => bufs.push(chunk));
       writer.on('end', () => {
         resolve(Buffer.concat(bufs).toString('base64'));
@@ -45,11 +48,12 @@ export const textToSpeech = ai.defineFlow(
   {
     name: 'textToSpeech',
     inputSchema: z.string(),
-    outputSchema: z.string(),
+    outputSchema: z.string().nullable(),
   },
   async (query) => {
+    let media;
     try {
-      const { media } = await ai.generate({
+      const response = await ai.generate({
         model: googleAI.model('gemini-2.5-flash-preview-tts-fast'),
         config: {
           responseModalities: ['AUDIO'],
@@ -61,11 +65,19 @@ export const textToSpeech = ai.defineFlow(
         },
         prompt: query,
       });
+      media = response.media;
+    } catch(e) {
+      console.error("Error generating TTS from AI model:", e);
+      return null;
+    }
+    
 
-      if (!media?.url) {
-        throw new Error('No media returned from TTS model.');
-      }
-      
+    if (!media?.url) {
+      console.error('No media returned from TTS model.');
+      return null;
+    }
+    
+    try {
       const audioBuffer = Buffer.from(
         media.url.substring(media.url.indexOf(',') + 1),
         'base64'
@@ -74,8 +86,8 @@ export const textToSpeech = ai.defineFlow(
       const wavBase64 = await toWav(audioBuffer);
       return 'data:audio/wav;base64,' + wavBase64;
     } catch (error) {
-        console.error("Error in textToSpeech flow:", error);
-        throw new Error("Failed to generate audio.");
+        console.error("Error converting PCM to WAV:", error);
+        return null;
     }
   }
 );

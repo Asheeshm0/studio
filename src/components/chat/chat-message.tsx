@@ -51,7 +51,6 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
 
     if (!message?.content) return;
 
-    // Immediately cancel any ongoing speech
     if (audioController) {
       cancelSpeaking();
     }
@@ -102,7 +101,6 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
   };
 
   useEffect(() => {
-    // Cleanup function to cancel speaking when the component unmounts
     return () => {
       cancelSpeaking();
     };

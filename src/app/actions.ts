@@ -22,7 +22,7 @@ export async function getAudioResponse(text: string) {
     const media = await textToSpeech(text);
     return media;
   } catch (error) {
-    console.error("Audio response error:", error);
+    console.error("Audio response error in server action:", error);
     return null;
   }
 }
