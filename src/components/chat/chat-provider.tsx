@@ -3,9 +3,10 @@
 import { createContext, useState, useCallback, useEffect, ReactNode } from "react";
 import type { Message, Chat } from "@/lib/types";
 import useLocalStorage from "@/hooks/use-local-storage";
-import { getAiResponse, getAudioResponse } from "@/app/actions";
+import { getAiResponse } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 import { nanoid } from "nanoid";
+import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
 
 export interface ChatContextType {
   chats: Chat[];
@@ -29,6 +30,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceChatMode, setIsVoiceChatMode] = useState(false);
   const { toast } = useToast();
+  const { speak, cancel, isSupported } = useSpeechSynthesis();
 
   const messages = chats.find(chat => chat.id === activeChatId)?.messages ?? [];
 
@@ -52,6 +54,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setActiveChatId(chats[0]?.id || null);
     }
   }, [chats, activeChatId, createNewChat, setActiveChatId]);
+  
+  useEffect(() => {
+    return () => {
+      // Clean up speech synthesis when provider unmounts
+      if (isSupported) {
+        cancel();
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSupported]);
 
 
   const sendMessage = useCallback(async (content: string) => {
@@ -87,14 +99,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       ));
 
       if (isVoiceChatMode) {
-        const audioSrc = await getAudioResponse(aiResponseContent);
-        if (audioSrc) {
-          const audio = new Audio(audioSrc);
-          audio.play();
+        if(isSupported) {
+          speak(aiResponseContent);
         } else {
-            toast({
-            title: "Audio Error",
-            description: "Could not generate audio for the response.",
+          toast({
+            title: "Speech Error",
+            description: "Voice chat is not supported in your browser.",
             variant: "destructive",
           });
         }
@@ -113,7 +123,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeChatId, messages, setChats, toast, isVoiceChatMode]);
+  }, [activeChatId, messages, setChats, toast, isVoiceChatMode, isSupported, speak]);
 
   const clearChat = useCallback(() => {
     if (!activeChatId) return;

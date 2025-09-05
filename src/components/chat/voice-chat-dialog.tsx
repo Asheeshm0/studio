@@ -5,10 +5,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Mic, Loader2, X } from 'lucide-react';
 import { useSpeech } from '@/hooks/use-speech';
-import { getAiResponse, getAudioResponse } from '@/app/actions';
+import { getAiResponse } from '@/app/actions';
 import { useChat } from '@/hooks/use-chat';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { useSpeechSynthesis } from '@/hooks/use-speech-synthesis';
+
 
 type VoiceChatDialogProps = {
   open: boolean;
@@ -20,68 +22,71 @@ type VoiceStatus = 'idle' | 'listening' | 'thinking' | 'speaking';
 export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
   const { messages } = useChat();
   const [status, setStatus] = useState<VoiceStatus>('idle');
-  const [audioController, setAudioController] = useState<HTMLAudioElement | null>(null);
   const { toast } = useToast();
+
+  const { isSupported: isSynthesisSupported, speak, cancel: cancelSpeaking, isSpeaking } = useSpeechSynthesis();
 
   const handleTranscript = useCallback(async (text: string) => {
     if (!text) return;
     setStatus('thinking');
     try {
       const aiResponseContent = await getAiResponse(messages, text);
-      setStatus('speaking');
-      const audioSrc = await getAudioResponse(aiResponseContent);
-      if (audioSrc) {
-        const newAudio = new Audio(audioSrc);
-        setAudioController(newAudio);
-        newAudio.play();
-        newAudio.onended = () => {
-          setStatus('idle');
-          setAudioController(null);
-        };
-        newAudio.onerror = () => {
-          setStatus('idle');
-          setAudioController(null);
-          toast({ title: "Audio Error", description: "Could not play the audio.", variant: "destructive" });
-        }
+      if (isSynthesisSupported) {
+        speak(aiResponseContent, {
+          onStart: () => setStatus('speaking'),
+          onEnd: () => setStatus('idle'),
+          onError: () => {
+            setStatus('idle');
+            toast({ title: "Speech Error", description: "Could not play the audio response.", variant: "destructive" });
+          }
+        });
       } else {
         setStatus('idle');
-        toast({ title: "Speech Error", description: "Could not generate audio for the response.", variant: "destructive" });
+        toast({ title: "Speech Error", description: "Speech synthesis is not supported in your browser.", variant: "destructive" });
       }
     } catch (error) {
       console.error('Error in voice chat:', error);
       setStatus('idle');
       toast({ title: "Error", description: "An unexpected error occurred during voice chat.", variant: "destructive" });
     }
-  }, [messages, toast]);
+  }, [messages, toast, isSynthesisSupported, speak]);
 
-  const { isListening, isSupported, toggleListening } = useSpeech(handleTranscript, true);
-
+  const { isListening, isSupported: isRecognitionSupported, toggleListening } = useSpeech(handleTranscript, true);
+  
   useEffect(() => {
-    if (open) {
-      setStatus('idle');
-    } else {
-      audioController?.pause();
+    if (!open) {
+      cancelSpeaking();
       if (isListening) {
         toggleListening();
       }
+      setStatus('idle');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
-  
+
   useEffect(() => {
-    if(isListening && status !== 'listening') {
+    if(isListening) {
       setStatus('listening');
-    } else if (!isListening && status === 'listening') {
+    } else if (status === 'listening') {
+      // This handles the case where speech recognition stops on its own
       setStatus('idle');
     }
   }, [isListening, status]);
+  
+  useEffect(() => {
+    if (!isSpeaking && status === 'speaking') {
+      setStatus('idle');
+    }
+  }, [isSpeaking, status]);
+
 
   const handleMicClick = () => {
-    if (status === 'speaking' && audioController) {
-      audioController.pause();
-      audioController.currentTime = 0;
-      setAudioController(null);
-      setStatus('idle');
+    if (!isRecognitionSupported) {
+        toast({ title: "Unsupported", description: "Speech recognition is not supported in your browser.", variant: "destructive" });
+        return;
+    }
+    if (status === 'speaking') {
+      cancelSpeaking();
     }
     toggleListening();
   };
@@ -110,12 +115,12 @@ export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
             <div className="absolute inset-2 rounded-full bg-primary/40"></div>
             <Button
               size="icon"
-              className="absolute inset-4 w-32 h-32 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground"
+              className={cn("absolute inset-4 w-32 h-32 rounded-full text-primary-foreground", status === 'listening' ? "bg-red-500 hover:bg-red-600" : "bg-primary hover:bg-primary/90")}
               onClick={handleMicClick}
               disabled={status === 'thinking'}
             >
               {status === 'thinking' && <Loader2 className="w-12 h-12 animate-spin" />}
-              {(status !== 'thinking') && <Mic className="w-12 h-12" />}
+              {status !== 'thinking' && <Mic className="w-12 h-12" />}
             </Button>
           </div>
         </div>

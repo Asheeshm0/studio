@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Copy, Volume2, BrainCircuit, User, Loader2, X } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { getAudioResponse } from "@/app/actions";
+import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
 
 interface ChatMessageProps {
   message?: Message;
@@ -17,9 +17,8 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
   const { toast } = useToast();
-  const [audioController, setAudioController] = useState<HTMLAudioElement | null>(null);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [audioLoading, setAudioLoading] = useState(false);
+  const { isSpeaking, isSupported, speak, cancel } = useSpeechSynthesis();
+  const [isThisMessageSpeaking, setIsThisMessageSpeaking] = useState(false);
 
   const isAssistant = message?.role === "assistant" || isLoading;
 
@@ -32,80 +31,49 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
     }
   };
 
-  const cancelSpeaking = useCallback(() => {
-    if (audioController) {
-      audioController.pause();
-      audioController.currentTime = 0;
-      setAudioController(null);
-      setIsSpeaking(false);
-      setAudioLoading(false);
-    }
-  }, [audioController]);
-
-
-  const handleSpeak = async () => {
-    if (isSpeaking) {
-      cancelSpeaking();
-      return;
-    }
-
-    if (!message?.content) return;
-
-    if (audioController) {
-      cancelSpeaking();
-    }
-
-    setAudioLoading(true);
-
-    try {
-      const audioSrc = await getAudioResponse(message.content);
-
-      if (audioSrc) {
-        const newAudio = new Audio(audioSrc);
-        
-        newAudio.onplaying = () => setIsSpeaking(true);
-        newAudio.onended = () => {
-          setIsSpeaking(false);
-          setAudioController(null);
-        };
-        newAudio.onerror = () => {
-          toast({
-            title: "Audio Error",
-            description: "Could not play the audio.",
-            variant: "destructive",
-          });
-          setIsSpeaking(false);
-          setAudioController(null);
-        };
-        
-        setAudioController(newAudio);
-        await newAudio.play();
-
-      } else {
-        toast({
-          title: "Speech Error",
-          description: "Could not generate audio for this message.",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error("Error in handleSpeak:", error);
+  const handleSpeak = () => {
+    if (!message?.content || !isSupported) {
       toast({
-        title: "Playback Error",
-        description: "An unexpected error occurred.",
+        title: "Speech Error",
+        description: "Speech synthesis is not supported in your browser.",
         variant: "destructive",
       });
-    } finally {
-      setAudioLoading(false);
+      return;
+    }
+    
+    if (isThisMessageSpeaking) {
+      cancel();
+    } else {
+      speak(message.content, {
+        onStart: () => setIsThisMessageSpeaking(true),
+        onEnd: () => setIsThisMessageSpeaking(false),
+        onError: (e) => {
+          setIsThisMessageSpeaking(false);
+          toast({
+            title: "Speech Error",
+            description: `An error occurred: ${e.error}`,
+            variant: "destructive",
+          });
+        }
+      });
     }
   };
 
   useEffect(() => {
+    // If another message starts speaking, this one should stop.
+    if (!isSpeaking) {
+      setIsThisMessageSpeaking(false);
+    }
+  }, [isSpeaking]);
+  
+  useEffect(() => {
     return () => {
-      cancelSpeaking();
+      if (isThisMessageSpeaking) {
+        cancel();
+      }
     };
-  }, [cancelSpeaking]);
-
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const timeAgo = useMemo(() => {
     if (!message) return null;
@@ -152,16 +120,16 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                   <Copy className="w-3.5 h-3.5" />
                   <span className="sr-only">Copy message</span>
                 </Button>
-                <Button variant="ghost" size="icon" className="w-6 h-6" onClick={handleSpeak} disabled={audioLoading}>
-                  {audioLoading ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : isSpeaking ? (
-                     <X className="w-4 h-4 text-accent" />
-                  ) : (
-                    <Volume2 className="w-3.5 h-3.5" />
-                  )}
-                  <span className="sr-only">{isSpeaking ? 'Stop speaking' : 'Read message aloud'}</span>
-                </Button>
+                {isSupported && (
+                    <Button variant="ghost" size="icon" className="w-6 h-6" onClick={handleSpeak}>
+                        {isThisMessageSpeaking ? (
+                            <X className="w-4 h-4 text-accent" />
+                        ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                        )}
+                        <span className="sr-only">{isThisMessageSpeaking ? 'Stop speaking' : 'Read message aloud'}</span>
+                    </Button>
+                )}
               </>
             )}
           </div>
