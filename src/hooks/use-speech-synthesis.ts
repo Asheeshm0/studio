@@ -1,8 +1,10 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import type { VoiceOption } from '@/components/chat/chat-provider';
 
 type SpeechSynthesisOptions = {
+  voiceGender?: VoiceOption;
   onStart?: () => void;
   onEnd?: () => void;
   onError?: (event: SpeechSynthesisErrorEvent) => void;
@@ -11,11 +13,23 @@ type SpeechSynthesisOptions = {
 export const useSpeechSynthesis = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       setIsSupported(true);
+      
+      const loadVoices = () => {
+        const availableVoices = window.speechSynthesis.getVoices();
+        if (availableVoices.length > 0) {
+          setVoices(availableVoices);
+        }
+      };
+
+      loadVoices();
+      // Voices are often loaded asynchronously.
+      window.speechSynthesis.onvoiceschanged = loadVoices;
     }
 
     const handleBeforeUnload = () => {
@@ -26,7 +40,6 @@ export const useSpeechSynthesis = () => {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      // Ensure any lingering speech is canceled when the component unmounts
       if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
@@ -36,12 +49,17 @@ export const useSpeechSynthesis = () => {
   const speak = useCallback((text: string, options: SpeechSynthesisOptions = {}) => {
     if (!isSupported) return;
 
-    // Always cancel any previous speech before starting a new one.
-    // This is the most reliable way to prevent "interrupted" errors.
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
     utteranceRef.current = utterance;
+    
+    if (options.voiceGender && voices.length > 0) {
+      const selectedVoice = voices.find(voice => 
+        voice.name.toLowerCase().includes(options.voiceGender as string) && voice.lang.startsWith('en')
+      ) || voices.find(voice => voice.lang.startsWith('en')); // fallback to any English voice
+      utterance.voice = selectedVoice || null;
+    }
 
     utterance.onstart = () => {
       setIsSpeaking(true);
@@ -61,14 +79,12 @@ export const useSpeechSynthesis = () => {
       options.onError?.(event);
     };
 
-    // The timeout can help in some browsers, but the explicit cancel() above is more important.
     setTimeout(() => window.speechSynthesis.speak(utterance), 0);
-  }, [isSupported]);
+  }, [isSupported, voices]);
 
   const cancel = useCallback(() => {
     if (!isSupported || !isSpeaking) return;
     window.speechSynthesis.cancel();
-    // Manually update state as onend might not fire after a manual cancel.
     setIsSpeaking(false); 
   }, [isSupported, isSpeaking]);
 

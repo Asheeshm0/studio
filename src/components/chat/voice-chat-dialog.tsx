@@ -20,7 +20,7 @@ type VoiceChatDialogProps = {
 type VoiceStatus = 'idle' | 'listening' | 'thinking' | 'speaking';
 
 export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
-  const { messages } = useChat();
+  const { messages, voice } = useChat();
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const { toast } = useToast();
 
@@ -33,6 +33,7 @@ export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
       const aiResponseContent = await getAiResponse(messages, text);
       if (isSynthesisSupported) {
         speak(aiResponseContent, {
+          voiceGender: voice,
           onStart: () => setStatus('speaking'),
           onEnd: () => setStatus('idle'),
           onError: () => {
@@ -49,7 +50,7 @@ export function VoiceChatDialog({ open, onOpenChange }: VoiceChatDialogProps) {
       setStatus('idle');
       toast({ title: "Error", description: "An unexpected error occurred during voice chat.", variant: "destructive" });
     }
-  }, [messages, toast, isSynthesisSupported, speak]);
+  }, [messages, toast, isSynthesisSupported, voice, speak]);
 
   const { isListening, isSupported: isRecognitionSupported, toggleListening } = useSpeech(handleTranscript, true);
   

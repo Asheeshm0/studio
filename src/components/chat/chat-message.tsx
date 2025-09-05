@@ -5,10 +5,11 @@ import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Copy, Volume2, BrainCircuit, User, Loader2, X } from "lucide-react";
+import { Copy, Volume2, BrainCircuit, User, X } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
+import { useChat } from "@/hooks/use-chat";
 
 interface ChatMessageProps {
   message?: Message;
@@ -17,6 +18,7 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
   const { toast } = useToast();
+  const { voice } = useChat();
   const { isSpeaking, isSupported, speak, cancel } = useSpeechSynthesis();
   const [isThisMessageSpeaking, setIsThisMessageSpeaking] = useState(false);
 
@@ -45,6 +47,7 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
       cancel();
     } else {
       speak(message.content, {
+        voiceGender: voice,
         onStart: () => setIsThisMessageSpeaking(true),
         onEnd: () => setIsThisMessageSpeaking(false),
         onError: (e) => {

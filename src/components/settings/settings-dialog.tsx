@@ -25,11 +25,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
+import { VoiceOption } from "../chat/chat-provider"
 
 
 export function SettingsDialog() {
   const { setTheme, theme } = useTheme()
-  const { clearChat, exportChat } = useChat()
+  const { clearChat, exportChat, voice, setVoice } = useChat()
   const [, setChats] = useLocalStorage("athena-ai-chats", [])
   const [, setThemeStorage] = useLocalStorage("theme", "system")
 
@@ -57,15 +60,34 @@ export function SettingsDialog() {
         <div className="py-4 space-y-4">
             <div className="space-y-2">
                 <h3 className="font-medium">Appearance</h3>
-                 <div className="flex items-center justify-between p-2 rounded-lg border">
-                    <p className="text-sm">Theme</p>
-                    <div className="flex items-center gap-2">
-                        <Button variant={theme === 'light' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme("light")} className="h-8 w-8">
-                            <Sun className="h-4 w-4" />
-                        </Button>
-                        <Button variant={theme === 'dark' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme("dark")} className="h-8 w-8">
-                            <Moon className="h-4 w-4" />
-                        </Button>
+                 <div className="p-2 rounded-lg border space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm">Theme</p>
+                      <div className="flex items-center gap-2">
+                          <Button variant={theme === 'light' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme("light")} className="h-8 w-8">
+                              <Sun className="h-4 w-4" />
+                          </Button>
+                          <Button variant={theme === 'dark' ? 'secondary' : 'ghost'} size="icon" onClick={() => setTheme("dark")} className="h-8 w-8">
+                              <Moon className="h-4 w-4" />
+                          </Button>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm">Voice</p>
+                      <RadioGroup
+                        value={voice}
+                        onValueChange={(value) => setVoice(value as VoiceOption)}
+                        className="flex items-center gap-4"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="female" id="female-voice" />
+                          <Label htmlFor="female-voice" className="text-sm">Female</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="male" id="male-voice" />
+                          <Label htmlFor="male-voice" className="text-sm">Male</Label>
+                        </div>
+                      </RadioGroup>
                     </div>
                 </div>
             </div>

@@ -8,11 +8,15 @@ import { useToast } from "@/hooks/use-toast";
 import { nanoid } from "nanoid";
 import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
 
+export type VoiceOption = "female" | "male";
+
 export interface ChatContextType {
   chats: Chat[];
   activeChatId: string | null;
   messages: Message[];
   isLoading: boolean;
+  voice: VoiceOption;
+  setVoice: (voice: VoiceOption) => void;
   sendMessage: (content: string) => Promise<void>;
   clearChat: () => void;
   exportChat: () => void;
@@ -29,6 +33,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [activeChatId, setActiveChatId] = useLocalStorage<string | null>("athena-ai-active-chat-id", null);
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceChatMode, setIsVoiceChatMode] = useState(false);
+  const [voice, setVoice] = useLocalStorage<VoiceOption>("athena-ai-voice", "female");
   const { toast } = useToast();
   const { speak, cancel, isSupported } = useSpeechSynthesis();
 
@@ -100,7 +105,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
 
       if (isVoiceChatMode) {
         if(isSupported) {
-          speak(aiResponseContent);
+          speak(aiResponseContent, { voiceGender: voice });
         } else {
           toast({
             title: "Speech Error",
@@ -123,7 +128,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [activeChatId, messages, setChats, toast, isVoiceChatMode, isSupported, speak]);
+  }, [activeChatId, messages, setChats, toast, isVoiceChatMode, isSupported, voice, speak]);
 
   const clearChat = useCallback(() => {
     if (!activeChatId) return;
@@ -172,6 +177,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     activeChatId,
     messages,
     isLoading,
+    voice,
+    setVoice,
     sendMessage,
     clearChat,
     exportChat,
