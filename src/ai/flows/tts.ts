@@ -51,6 +51,11 @@ export const textToSpeech = ai.defineFlow(
     outputSchema: z.string().nullable(),
   },
   async (query) => {
+    if (!query) {
+      console.log("TTS flow received an empty query.");
+      return null;
+    }
+    
     let media;
     try {
       const response = await ai.generate({
