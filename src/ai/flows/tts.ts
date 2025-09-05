@@ -58,8 +58,8 @@ export const textToSpeech = ai.defineFlow(
       prompt: query,
     });
 
-    if (!media) {
-      throw new Error('no media returned');
+    if (!media?.url) {
+      throw new Error('No media returned from TTS model.');
     }
     
     const audioBuffer = Buffer.from(
