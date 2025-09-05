@@ -44,12 +44,12 @@ export function ChatInput() {
   }, [inputValue]);
   
   useEffect(() => {
-    if (!isListening && inputValue.trim()) {
+    if (isVoiceChatMode && !isListening && inputValue.trim()) {
         sendMessage(inputValue);
         setInputValue("");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isListening]);
+  }, [isListening, isVoiceChatMode]);
   
   const handleMicClick = () => {
     if (isListening) {
