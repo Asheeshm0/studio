@@ -33,6 +33,8 @@ export const useSpeechSynthesis = () => {
   const speak = useCallback((text: string, options: SpeechSynthesisOptions = {}) => {
     if (!isSupported) return;
 
+    // A common issue is that speech synthesis needs to be "woken up" after a page load.
+    // Calling cancel() and then speak() in a new turn of the event loop can help.
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -50,13 +52,14 @@ export const useSpeechSynthesis = () => {
     };
 
     utterance.onerror = (event) => {
-      console.error('SpeechSynthesis Error', event);
+      console.error('SpeechSynthesis Error', event.error);
       setIsSpeaking(false);
       utteranceRef.current = null;
       options.onError?.(event);
     };
 
-    window.speechSynthesis.speak(utterance);
+    // Sometimes, speech synthesis requires a moment to initialize, especially on first use.
+    setTimeout(() => window.speechSynthesis.speak(utterance), 0);
   }, [isSupported]);
 
   const cancel = useCallback(() => {
