@@ -26,15 +26,18 @@ export const useSpeechSynthesis = () => {
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.speechSynthesis.cancel();
+      // Ensure any lingering speech is canceled when the component unmounts
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     };
   }, []);
 
   const speak = useCallback((text: string, options: SpeechSynthesisOptions = {}) => {
     if (!isSupported) return;
 
-    // A common issue is that speech synthesis needs to be "woken up" after a page load.
-    // Calling cancel() and then speak() in a new turn of the event loop can help.
+    // Always cancel any previous speech before starting a new one.
+    // This is the most reliable way to prevent "interrupted" errors.
     window.speechSynthesis.cancel();
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -58,13 +61,15 @@ export const useSpeechSynthesis = () => {
       options.onError?.(event);
     };
 
-    // Sometimes, speech synthesis requires a moment to initialize, especially on first use.
+    // The timeout can help in some browsers, but the explicit cancel() above is more important.
     setTimeout(() => window.speechSynthesis.speak(utterance), 0);
   }, [isSupported]);
 
   const cancel = useCallback(() => {
     if (!isSupported || !isSpeaking) return;
     window.speechSynthesis.cancel();
+    // Manually update state as onend might not fire after a manual cancel.
+    setIsSpeaking(false); 
   }, [isSupported, isSpeaking]);
 
   return { isSpeaking, isSupported, speak, cancel };
