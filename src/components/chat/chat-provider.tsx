@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useState, useCallback, useEffect, ReactNode } from "react";
-import type { Message, Chat } from "@/lib/types";
+import type { Message, Chat, Attachment } from "@/lib/types";
 import useLocalStorage from "@/hooks/use-local-storage";
 import { getAiResponse } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
@@ -17,7 +17,7 @@ export interface ChatContextType {
   isLoading: boolean;
   voice: VoiceOption;
   setVoice: (voice: VoiceOption) => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, attachments?: Attachment[]) => Promise<void>;
   regenerateResponse: () => Promise<void>;
   clearChat: () => void;
   exportChat: () => void;
@@ -71,16 +71,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSupported]);
   
-  const getAiResponseAndUpdateState = useCallback(async (history: Message[], messageContent: string) => {
+  const getAiResponseAndUpdateState = useCallback(async (history: Message[], messageContent: string, attachments: Attachment[] = []) => {
     setIsLoading(true);
     try {
-      const aiResponseContent = await getAiResponse(history, messageContent);
+      const aiResponseContent = await getAiResponse(history, messageContent, attachments);
       
       const aiMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
         content: aiResponseContent,
         timestamp: Date.now(),
+        attachments: [],
       };
       
       setChats(prev => prev.map(chat => 
@@ -116,14 +117,15 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }, [activeChatId, setChats, toast, isVoiceChatMode, isSupported, voice, speak]);
 
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || !activeChatId) return;
+  const sendMessage = useCallback(async (content: string, attachments: Attachment[] = []) => {
+    if (!content.trim() && attachments.length === 0 || !activeChatId) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
       content,
       timestamp: Date.now(),
+      attachments,
     };
 
     const updatedMessages = [...messages, userMessage];
@@ -132,7 +134,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       chat.id === activeChatId ? { ...chat, messages: updatedMessages } : chat
     ));
 
-    await getAiResponseAndUpdateState(updatedMessages, content);
+    await getAiResponseAndUpdateState(updatedMessages, content, attachments);
   }, [activeChatId, messages, setChats, getAiResponseAndUpdateState]);
   
   const regenerateResponse = useCallback(async () => {
@@ -151,7 +153,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       chat.id === activeChatId ? { ...chat, messages: historyForRegeneration } : chat
     ));
 
-    await getAiResponseAndUpdateState(historyForRegeneration, lastUserMessage.content);
+    await getAiResponseAndUpdateState(historyForRegeneration, lastUserMessage.content, lastUserMessage.attachments);
   }, [activeChatId, messages, setChats, getAiResponseAndUpdateState]);
 
   const clearChat = useCallback(() => {
@@ -177,7 +179,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const fileContent = messages
       .map(msg => {
         const time = new Date(msg.timestamp).toLocaleString();
-        return `[${time}] ${msg.role.toUpperCase()}:\n${msg.content}`;
+        let content = `[${time}] ${msg.role.toUpperCase()}:\n${msg.content}`;
+        if (msg.attachments && msg.attachments.length > 0) {
+          content += `\nAttachments: ${msg.attachments.map(a => a.name).join(', ')}`;
+        }
+        return content;
       })
       .join("\n\n---------------------------------\n\n");
     

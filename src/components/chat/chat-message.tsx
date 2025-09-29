@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Copy, Volume2, BrainCircuit, User, X, RefreshCw } from "lucide-react";
+import { Copy, Volume2, BrainCircuit, User, X, RefreshCw, FileText, ImageIcon } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
@@ -92,6 +93,8 @@ export function ChatMessage({ message, isLoading = false, isLastMessage = false 
     }
   }, [message]);
 
+  const attachments = message?.attachments?.filter(a => a.type === 'image');
+
   return (
     <div className={cn("flex items-start gap-3", !isAssistant && "justify-end")}>
       {isAssistant && (
@@ -116,7 +119,29 @@ export function ChatMessage({ message, isLoading = false, isLastMessage = false 
               <span className="w-2 h-2 rounded-full bg-current animate-pulse delay-300"></span>
             </div>
           ) : (
-            <p className="whitespace-pre-wrap text-sm">{message?.content}</p>
+            <>
+              {message?.attachments && message.attachments.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-2">
+                  {message.attachments.map((file, index) => (
+                    <div key={index} className={cn(
+                        "p-2 border rounded-lg flex items-center gap-2 text-sm",
+                        isAssistant ? "bg-background/50" : "bg-primary-foreground/20 text-primary-foreground"
+                      )}
+                    >
+                      {file.type === 'image' ? 
+                        <Image src={file.content} alt={file.name} width={80} height={80} className="rounded-md object-cover" />
+                        : 
+                        <>
+                          <FileText className="w-4 h-4" />
+                          <span className="max-w-xs truncate">{file.name}</span>
+                        </>
+                      }
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="whitespace-pre-wrap text-sm">{message?.content}</p>
+            </>
           )}
         </div>
         {message && !isLoading && (
