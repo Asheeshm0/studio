@@ -33,8 +33,12 @@ export function ChatMessages() {
              <p className="mt-2">Start a conversation by typing a message below, or start a new chat.</p>
           </div>
         ) : (
-          isClient && messages.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+          isClient && messages.map((message, index) => (
+            <ChatMessage 
+              key={message.id} 
+              message={message} 
+              isLastMessage={index === messages.length - 1} 
+            />
           ))
         )}
         {isLoading && <ChatMessage isLoading />}

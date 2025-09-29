@@ -18,6 +18,7 @@ export interface ChatContextType {
   voice: VoiceOption;
   setVoice: (voice: VoiceOption) => void;
   sendMessage: (content: string) => Promise<void>;
+  regenerateResponse: () => Promise<void>;
   clearChat: () => void;
   exportChat: () => void;
   setActiveChatId: (id: string | null) => void;
@@ -69,28 +70,11 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSupported]);
-
-
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || !activeChatId) return;
-
-    const userMessage: Message = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content,
-      timestamp: Date.now(),
-    };
-
-    const updatedMessages = [...messages, userMessage];
-    
-    setChats(prev => prev.map(chat => 
-      chat.id === activeChatId ? { ...chat, messages: updatedMessages } : chat
-    ));
-
+  
+  const getAiResponseAndUpdateState = useCallback(async (history: Message[], messageContent: string) => {
     setIsLoading(true);
-
     try {
-      const aiResponseContent = await getAiResponse(updatedMessages, content);
+      const aiResponseContent = await getAiResponse(history, messageContent);
       
       const aiMessage: Message = {
         id: `assistant-${Date.now()}`,
@@ -100,7 +84,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       };
       
       setChats(prev => prev.map(chat => 
-        chat.id === activeChatId ? { ...chat, messages: [...updatedMessages, aiMessage] } : chat
+        chat.id === activeChatId ? { ...chat, messages: [...history, aiMessage] } : chat
       ));
 
       if (isVoiceChatMode) {
@@ -122,13 +106,53 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         description: "Failed to get a response from the assistant. Please check your connection and try again.",
         variant: "destructive",
       });
-      setChats(prev => prev.map(chat => 
-        chat.id === activeChatId ? { ...chat, messages } : chat
+      // Revert to the state before sending the message
+       setChats(prev => prev.map(chat => 
+        chat.id === activeChatId ? { ...chat, messages: history.slice(0, -1) } : chat
       ));
     } finally {
       setIsLoading(false);
     }
-  }, [activeChatId, messages, setChats, toast, isVoiceChatMode, isSupported, voice, speak]);
+  }, [activeChatId, setChats, toast, isVoiceChatMode, isSupported, voice, speak]);
+
+
+  const sendMessage = useCallback(async (content: string) => {
+    if (!content.trim() || !activeChatId) return;
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content,
+      timestamp: Date.now(),
+    };
+
+    const updatedMessages = [...messages, userMessage];
+    
+    setChats(prev => prev.map(chat => 
+      chat.id === activeChatId ? { ...chat, messages: updatedMessages } : chat
+    ));
+
+    await getAiResponseAndUpdateState(updatedMessages, content);
+  }, [activeChatId, messages, setChats, getAiResponseAndUpdateState]);
+  
+  const regenerateResponse = useCallback(async () => {
+    if (!activeChatId) return;
+
+    const lastUserMessage = [...messages].reverse().find(m => m.role === 'user');
+    if (!lastUserMessage) return;
+
+    // Find the index of the last user message
+    const lastUserMessageIndex = messages.lastIndexOf(lastUserMessage);
+    
+    // History includes everything up to and including the last user message
+    const historyForRegeneration = messages.slice(0, lastUserMessageIndex + 1);
+
+    setChats(prev => prev.map(chat => 
+      chat.id === activeChatId ? { ...chat, messages: historyForRegeneration } : chat
+    ));
+
+    await getAiResponseAndUpdateState(historyForRegeneration, lastUserMessage.content);
+  }, [activeChatId, messages, setChats, getAiResponseAndUpdateState]);
 
   const clearChat = useCallback(() => {
     if (!activeChatId) return;
@@ -180,6 +204,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     voice,
     setVoice,
     sendMessage,
+    regenerateResponse,
     clearChat,
     exportChat,
     setActiveChatId,

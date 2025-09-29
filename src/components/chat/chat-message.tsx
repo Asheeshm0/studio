@@ -5,7 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Copy, Volume2, BrainCircuit, User, X } from "lucide-react";
+import { Copy, Volume2, BrainCircuit, User, X, RefreshCw } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
@@ -14,11 +14,12 @@ import { useChat } from "@/hooks/use-chat";
 interface ChatMessageProps {
   message?: Message;
   isLoading?: boolean;
+  isLastMessage?: boolean;
 }
 
-export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
+export function ChatMessage({ message, isLoading = false, isLastMessage = false }: ChatMessageProps) {
   const { toast } = useToast();
-  const { voice } = useChat();
+  const { voice, regenerateResponse } = useChat();
   const { isSpeaking, isSupported, speak, cancel } = useSpeechSynthesis();
   const [isThisMessageSpeaking, setIsThisMessageSpeaking] = useState(false);
 
@@ -61,6 +62,10 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
       });
     }
   };
+  
+  const handleRegenerate = async () => {
+    await regenerateResponse();
+  }
 
   useEffect(() => {
     // If another message starts speaking, this one should stop.
@@ -132,6 +137,12 @@ export function ChatMessage({ message, isLoading = false }: ChatMessageProps) {
                         )}
                         <span className="sr-only">{isThisMessageSpeaking ? 'Stop speaking' : 'Read message aloud'}</span>
                     </Button>
+                )}
+                {isLastMessage && (
+                  <Button variant="ghost" size="icon" className="w-6 h-6" onClick={handleRegenerate}>
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span className="sr-only">Regenerate response</span>
+                  </Button>
                 )}
               </>
             )}
