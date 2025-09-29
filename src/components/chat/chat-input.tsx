@@ -136,7 +136,7 @@ export function ChatInput() {
             <input type="file" ref={fileInputRef} onChange={handleFileChange} multiple accept="image/png, image/jpeg, .txt" className="hidden" />
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button type="button" size="icon" variant="ghost" onClick={() => fileInput-ref.current?.click()} disabled={isLoading}>
+                <Button type="button" size="icon" variant="ghost" onClick={() => fileInputRef.current?.click()} disabled={isLoading}>
                   <Paperclip className={cn("w-5 h-5", "text-muted-foreground")} />
                 </Button>
               </TooltipTrigger>
