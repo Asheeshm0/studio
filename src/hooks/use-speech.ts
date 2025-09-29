@@ -61,10 +61,23 @@ export const useSpeech = (onTranscript: (text: string) => void, autoStop: boolea
       };
 
       recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
+        // Ignore 'aborted' and 'no-speech' errors which can happen on manual stop or silence
+        if (event.error === 'aborted' || event.error === 'no-speech') {
+          console.warn(`Speech recognition stopped: ${event.error}`);
+          setIsListening(false);
+          return;
+        }
+
         if (event.error === 'network') {
           toast({
             title: 'Network Error',
             description: 'Speech recognition service is unavailable. Please check your internet connection.',
+            variant: 'destructive',
+          });
+        } else {
+           toast({
+            title: 'Speech Recognition Error',
+            description: `An error occurred: ${event.error}`,
             variant: 'destructive',
           });
         }
