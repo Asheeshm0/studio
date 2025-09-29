@@ -11,6 +11,10 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechSynthesis } from "@/hooks/use-speech-synthesis";
 import { useChat } from "@/hooks/use-chat";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { CodeBlock } from './code-block';
+
 
 interface ChatMessageProps {
   message?: Message;
@@ -140,7 +144,29 @@ export function ChatMessage({ message, isLoading = false, isLastMessage = false 
                   ))}
                 </div>
               )}
-              <p className="whitespace-pre-wrap text-sm">{message?.content}</p>
+              <div className="prose prose-sm max-w-none text-current prose-p:my-2 prose-headings:my-2">
+                <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ node, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        const codeContent = String(children).replace(/\n$/, '');
+                        return match ? (
+                          <CodeBlock
+                            language={match[1]}
+                            value={codeContent}
+                          />
+                        ) : (
+                          <code className="bg-muted px-1 py-0.5 rounded-sm" {...props}>
+                            {children}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                  {message?.content || ""}
+                </ReactMarkdown>
+              </div>
             </>
           )}
         </div>
