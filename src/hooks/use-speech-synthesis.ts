@@ -55,9 +55,22 @@ export const useSpeechSynthesis = () => {
     utteranceRef.current = utterance;
     
     if (options.voiceGender && voices.length > 0) {
-      const selectedVoice = voices.find(voice => 
-        voice.name.toLowerCase().includes(options.voiceGender as string) && voice.lang.startsWith('en')
-      ) || voices.find(voice => voice.lang.startsWith('en')); // fallback to any English voice
+      const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+      
+      let selectedVoice = englishVoices.find(voice => 
+        voice.name.toLowerCase().includes(options.voiceGender!)
+      );
+      
+      if (!selectedVoice) {
+        if (options.voiceGender === 'male') {
+          // Fallback for male voices
+          selectedVoice = englishVoices.find(voice => voice.name.toLowerCase().includes('male')) || englishVoices.find(v => !v.name.toLowerCase().includes('female'));
+        } else {
+          // Fallback for female voices (usually default)
+          selectedVoice = englishVoices.find(voice => voice.name.toLowerCase().includes('female')) || englishVoices[0];
+        }
+      }
+
       utterance.voice = selectedVoice || null;
     }
 
