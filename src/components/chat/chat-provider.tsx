@@ -30,11 +30,11 @@ export interface ChatContextType {
 export const ChatContext = createContext<ChatContextType | undefined>(undefined);
 
 export function ChatProvider({ children }: { children: ReactNode }) {
-  const [chats, setChats] = useLocalStorage<Chat[]>("athena-ai-chats", []);
-  const [activeChatId, setActiveChatId] = useLocalStorage<string | null>("athena-ai-active-chat-id", null);
+  const [chats, setChats] = useLocalStorage<Chat[]>("kattapa-ai-chats", []);
+  const [activeChatId, setActiveChatId] = useLocalStorage<string | null>("kattapa-ai-active-chat-id", null);
   const [isLoading, setIsLoading] = useState(false);
   const [isVoiceChatMode, setIsVoiceChatMode] = useState(false);
-  const [voice, setVoice] = useLocalStorage<VoiceOption>("athena-ai-voice", "female");
+  const [voice, setVoice] = useLocalStorage<VoiceOption>("kattapa-ai-voice", "female");
   const { toast } = useToast();
   const { speak, cancel, isSupported } = useSpeechSynthesis();
 
@@ -191,7 +191,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `athena-ai-chat-${new Date().toISOString().split('T')[0]}.txt`;
+    link.download = `kattapa-ai-chat-${new Date().toISOString().split('T')[0]}.txt`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

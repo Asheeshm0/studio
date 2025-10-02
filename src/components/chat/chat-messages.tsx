@@ -29,7 +29,7 @@ export function ChatMessages() {
       <div className="p-4 md:p-6 space-y-6">
         {isClient && messages.length === 0 && !isLoading ? (
           <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] text-center text-muted-foreground">
-             <h2 className="text-2xl font-semibold">Welcome to Athena AI</h2>
+             <h2 className="text-2xl font-semibold">Welcome to KATTAPA AI</h2>
              <p className="mt-2">Start a conversation by typing a message below, or start a new chat.</p>
           </div>
         ) : (

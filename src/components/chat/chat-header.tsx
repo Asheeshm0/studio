@@ -10,7 +10,7 @@ export function ChatHeader() {
         <div className="p-2 rounded-full bg-primary/10 text-primary">
           <BrainCircuit className="w-6 h-6" />
         </div>
-        <h1 className="text-xl font-bold text-foreground">Athena AI</h1>
+        <h1 className="text-xl font-bold text-foreground">KATTAPA AI</h1>
       </div>
       <SettingsDialog />
     </header>

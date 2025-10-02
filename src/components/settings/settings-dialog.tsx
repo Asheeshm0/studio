@@ -33,7 +33,7 @@ import { VoiceOption } from "../chat/chat-provider"
 export function SettingsDialog() {
   const { setTheme, theme } = useTheme()
   const { clearChat, exportChat, voice, setVoice } = useChat()
-  const [, setChats] = useLocalStorage("athena-ai-chats", [])
+  const [, setChats] = useLocalStorage("kattapa-ai-chats", [])
 
   const handleClearAll = () => {
     setChats([])
@@ -53,7 +53,7 @@ export function SettingsDialog() {
         <SheetHeader>
           <SheetTitle>Settings</SheetTitle>
           <SheetDescription>
-            Customize your experience with Athena AI.
+            Customize your experience with KATTAPA AI.
           </SheetDescription>
         </SheetHeader>
         <div className="py-4 space-y-4">

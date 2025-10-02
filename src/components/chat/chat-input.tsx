@@ -126,7 +126,7 @@ export function ChatInput() {
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={isListening ? "Listening..." : "Ask Athena anything..."}
+          placeholder={isListening ? "Listening..." : "Ask KATTAPA anything..."}
           className="pr-40 min-h-[48px] resize-none"
           rows={1}
           disabled={isLoading}

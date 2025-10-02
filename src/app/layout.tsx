@@ -4,7 +4,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from "@/components/ui/toaster"
 
 export const metadata: Metadata = {
-  title: 'Athena AI',
+  title: 'KATTAPA AI',
   description: 'Your personal AI assistant',
 };
 
