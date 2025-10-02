@@ -9,7 +9,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
-import { Settings, Sun, Moon, Download, Trash2, LogOut } from "lucide-react"
+import { Settings, Sun, Moon, Download, Trash2, LogOut, Info, FileText, Users } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useChat } from "@/hooks/use-chat"
 import { Separator } from "@/components/ui/separator"
@@ -25,6 +25,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { VoiceOption } from "../chat/chat-provider"
@@ -91,6 +92,50 @@ export function SettingsDialog() {
                 </div>
             </div>
 
+            <Separator />
+
+            <div className="space-y-2">
+                <h3 className="font-medium">About</h3>
+                 <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start gap-2">
+                            <FileText className="h-4 w-4" />
+                            <span>Terms & Conditions</span>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                        <DialogTitle>Terms & Conditions</DialogTitle>
+                        <DialogDescription>
+                            By using KATTAPA AI, you agree to the following terms and conditions.
+                        </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 text-sm text-muted-foreground">
+                            <p><strong>1. Data Privacy:</strong> Your chat history and preferences are stored locally in your browser's storage. We do not collect, see, or use your data. It remains entirely on your device.</p>
+                            <p><strong>2. Data Deletion:</strong> You have full control over your data. You can clear your current chat or all of your data at any time through the settings panel. This action is irreversible.</p>
+                            <p><strong>3. Service Use:</strong> You are responsible for the content you generate using the AI. Please do not use the service for any illegal or harmful activities.</p>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+                <Dialog>
+                    <DialogTrigger asChild>
+                        <Button variant="outline" className="w-full justify-start gap-2">
+                            <Users className="h-4 w-4" />
+                            <span>About Developers</span>
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                        <DialogTitle>About KATTAPA DEVELOPERS</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 text-sm text-muted-foreground">
+                            <p>KATTAPA AI was created by KATTAPA DEVELOPERS, a team of talented and innovative developers passionate about creating smart, user-friendly AI applications.</p>
+                            <p>Our mission is to build powerful and accessible AI tools that can help people in their daily lives, work, and creative endeavors.</p>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            </div>
+            
             <Separator />
             
             <div className="space-y-2">
