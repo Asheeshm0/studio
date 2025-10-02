@@ -20,6 +20,9 @@ export const chatFlow = ai.defineFlow(
     outputSchema: ChatOutputSchema,
   },
   async ({ history, message, images }) => {
+    // Take the last 5 messages for a smoother conversation
+    const recentHistory = history?.slice(-5) || [];
+
     const prompt: any[] = [
       `You are KATTAPA AI, a helpful and friendly multilingual assistant.
 Your responses should be detailed, informative, and conversational.
@@ -31,7 +34,7 @@ If a user provides a large piece of text and asks for a summary, provide a conci
 If a user's conversation indicates interest in a topic, you can suggest relevant articles or videos.
 
 Here is the current conversation history:
-${history?.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n') || 'No history yet.'}
+${recentHistory?.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n') || 'No history yet.'}
 
 Here is the user's latest message:
 user: ${message}`,
