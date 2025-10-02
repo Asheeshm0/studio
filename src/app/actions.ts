@@ -1,7 +1,6 @@
 "use server";
 
 import { chatFlow } from "@/ai/flows/chat";
-import { analyzeUploadedText } from "@/ai/flows/analyze-uploaded-text";
 import type { Attachment, Message } from "@/lib/types";
 
 export async function getAiResponse(
@@ -14,28 +13,20 @@ export async function getAiResponse(
       (a) => a.type === "image"
     );
     
-    // Handle document analysis separately
+    // Pass document content directly to the main chat flow
     const documentAttachments = attachments.filter(
       (a) => a.type === "document"
     );
 
-    let docAnalysisResults = "";
+    let docContents = "";
     if (documentAttachments.length > 0) {
-      const analyses = await Promise.all(
-        documentAttachments.map(async (doc) => {
-          const result = await analyzeUploadedText({
-            text: doc.content,
-            query: message || "Provide a summary of the document.",
-          });
-          return `Analysis for ${doc.name}:\nSummary: ${result.summary}\n${result.patterns ? `Patterns: ${result.patterns}` : ""}`;
-        })
-      );
-      docAnalysisResults = analyses.join("\n\n");
+      const docText = documentAttachments.map(doc => `--- Document: ${doc.name} ---\n${doc.content}`).join("\n\n");
+      docContents = `\n\nThe user has provided the following documents for context:\n${docText}`;
     }
 
     const flowResponse = await chatFlow({
       history: history.map((m) => ({ role: m.role, content: m.content })),
-      message: `${message}${docAnalysisResults ? `\n\nHere is the analysis of the document(s) you provided:\n${docAnalysisResults}` : ""}`,
+      message: `${message}${docContents}`,
       images: imageAttachments.map((img) => img.content),
     });
     

@@ -24,7 +24,8 @@ export const chatFlow = ai.defineFlow(
     const recentHistory = history?.slice(-5) || [];
 
     const prompt: any[] = [
-      `You are KATTAPA AI, a helpful and friendly multilingual assistant.
+      {
+        text: `You are KATTAPA AI, a helpful and friendly multilingual assistant.
 Your responses should be detailed, informative, and conversational.
 IMPORTANT: You must detect the language of the user's prompt and ALWAYS respond in that same language.
 If the user asks a question that can be answered with a simple "yes" or "no", you should respond with "yes" or "no" in their language.
@@ -37,7 +38,8 @@ Here is the current conversation history:
 ${recentHistory?.map((msg: any) => `${msg.role}: ${msg.content}`).join('\n') || 'No history yet.'}
 
 Here is the user's latest message:
-user: ${message}`,
+user: ${message}`
+      },
     ];
 
     if (images && images.length > 0) {
